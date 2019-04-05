@@ -93,7 +93,13 @@ func (ss *Service) Stop() error {
 // with the rest of the network and no errors occurred. Otherwise, it returns an error.
 func (ss *Service) Status() error {
 	synced, currentSyncedSlot := ss.InitialSync.NodeIsSynced()
-	if !synced {
+	if !ss.Querier.chainStarted {
+		return nil
+	}
+	if ss.Querier.atGenesis {
+		return nil
+	}
+	if !synced && !ss.Querier.chainStarted {
 		return fmt.Errorf(
 			"node not yet synced, currently at slot: %v",
 			currentSyncedSlot-params.BeaconConfig().GenesisSlot,
