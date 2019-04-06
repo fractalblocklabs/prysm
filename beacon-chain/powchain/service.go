@@ -247,7 +247,7 @@ func (w *Web3Service) processSubscribedHeaders(header *gethTypes.Header) {
 	blockNumberGauge.Set(float64(header.Number.Int64()))
 	w.blockHeight = header.Number
 	w.blockHash = header.Hash()
-	w.blockTime = time.Unix(int64(header.Time), 0)
+	//w.blockTime = time.Unix(int64(header.Time), 0)
 	log.WithFields(logrus.Fields{
 		"blockNumber": w.blockHeight,
 		"blockHash":   w.blockHash.Hex(),
@@ -285,22 +285,13 @@ func (w *Web3Service) handleDelayTicker() {
 	}
 }
 
-// run subscribes to all the services for the ETH1.0 chain.
-func (w *Web3Service) run(done <-chan struct{}) {
+func (w *Web3Service) InitializeValues() {
 	w.isRunning = true
 	w.runError = nil
 	if err := w.initDataFromContract(); err != nil {
 		log.Errorf("Unable to retrieve data from deposit contract %v", err)
 		return
 	}
-
-	headSub, err := w.reader.SubscribeNewHead(w.ctx, w.headerChan)
-	if err != nil {
-		log.Errorf("Unable to subscribe to incoming ETH1.0 chain headers: %v", err)
-		w.runError = err
-		return
-	}
-
 	header, err := w.blockFetcher.HeaderByNumber(w.ctx, nil)
 	if err != nil {
 		log.Errorf("Unable to retrieve latest ETH1.0 chain header: %v", err)
@@ -316,7 +307,17 @@ func (w *Web3Service) run(done <-chan struct{}) {
 		w.runError = err
 		return
 	}
+}
 
+// run subscribes to all the services for the ETH1.0 chain.
+func (w *Web3Service) run(done <-chan struct{}) {
+	w.InitializeValues()
+	headSub, err := w.reader.SubscribeNewHead(w.ctx, w.headerChan)
+	if err != nil {
+		log.Errorf("Unable to subscribe to incoming ETH1.0 chain headers: %v", err)
+		w.runError = err
+		return
+	}
 	ticker := time.NewTicker(1 * time.Second)
 	defer headSub.Unsubscribe()
 	defer ticker.Stop()
