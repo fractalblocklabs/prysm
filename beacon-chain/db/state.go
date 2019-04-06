@@ -15,7 +15,6 @@ import (
 	"github.com/prysmaticlabs/prysm/beacon-chain/core/state"
 	pb "github.com/prysmaticlabs/prysm/proto/beacon/p2p/v1"
 	"github.com/prysmaticlabs/prysm/shared/hashutil"
-	"github.com/prysmaticlabs/prysm/shared/params"
 	"go.opencensus.io/trace"
 )
 
@@ -28,7 +27,10 @@ var (
 
 // InitializeState creates an initial genesis state for the beacon
 // node using a set of genesis validators.
-func (db *BeaconDB) InitializeState(genesisTime uint64, deposits []*pb.Deposit, eth1Data *pb.Eth1Data) error {
+func (db *BeaconDB) InitializeState(ctx context.Context, genesisTime uint64, deposits []*pb.Deposit, eth1Data *pb.Eth1Data) error {
+	ctx, span := trace.StartSpan(ctx, "BeaconDB.InitializeState")
+	defer span.End()
+
 	beaconState, err := state.GenesisBeaconState(deposits, genesisTime, eth1Data)
 	if err != nil {
 		return err
@@ -46,7 +48,10 @@ func (db *BeaconDB) InitializeState(genesisTime uint64, deposits []*pb.Deposit, 
 
 	db.currentState = beaconState
 
-	if err := db.SaveHistoricalState(beaconState); err != nil {
+	if err := db.SaveState(ctx, beaconState); err != nil {
+		return err
+	}
+	if err := db.SaveHistoricalState(ctx, beaconState); err != nil {
 		return err
 	}
 
@@ -88,7 +93,7 @@ func (db *BeaconDB) InitializeState(genesisTime uint64, deposits []*pb.Deposit, 
 
 // HeadState fetches the canonical beacon chain's head state from the DB.
 func (db *BeaconDB) HeadState(ctx context.Context) (*pb.BeaconState, error) {
-	ctx, span := trace.StartSpan(ctx, "BeaconDB.State")
+	ctx, span := trace.StartSpan(ctx, "BeaconDB.HeadState")
 	defer span.End()
 
 	ctx, lockSpan := trace.StartSpan(ctx, "BeaconDB.stateLock.Lock")
@@ -143,7 +148,7 @@ func (db *BeaconDB) SaveState(ctx context.Context, beaconState *pb.BeaconState) 
 	db.currentState = currentState
 	cloneSpan.End()
 
-	if err := db.SaveHistoricalState(beaconState); err != nil {
+	if err := db.SaveHistoricalState(ctx, beaconState); err != nil {
 		return err
 	}
 
@@ -155,15 +160,6 @@ func (db *BeaconDB) SaveState(ctx context.Context, beaconState *pb.BeaconState) 
 			prevStatePb := &pb.BeaconState{}
 			if err := proto.Unmarshal(prevState, prevStatePb); err != nil {
 				return err
-			}
-			if prevStatePb.Slot >= beaconState.Slot {
-				log.WithField(
-					"prevStateSlot",
-					prevStatePb.Slot-params.BeaconConfig().GenesisSlot,
-				).WithField(
-					"newStateSlot",
-					beaconState.Slot-params.BeaconConfig().GenesisSlot,
-				).Warn("Current saved state has a slot number greater or equal to the state attempted to be saved")
 			}
 		}
 
@@ -210,7 +206,9 @@ func (db *BeaconDB) SaveFinalizedState(beaconState *pb.BeaconState) error {
 }
 
 // SaveHistoricalState saves the last finalized state in the db.
-func (db *BeaconDB) SaveHistoricalState(beaconState *pb.BeaconState) error {
+func (db *BeaconDB) SaveHistoricalState(ctx context.Context, beaconState *pb.BeaconState) error {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.db.SaveHistoricalState")
+	defer span.End()
 
 	slotBinary := encodeSlotNumber(beaconState.Slot)
 	stateHash, err := hashutil.HashProto(beaconState)
