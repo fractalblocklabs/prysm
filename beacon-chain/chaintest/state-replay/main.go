@@ -4,15 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/shared/hashutil"
 	"github.com/prysmaticlabs/prysm/shared/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
 	"github.com/prysmaticlabs/prysm/beacon-chain/blockchain"
-	"github.com/prysmaticlabs/prysm/beacon-chain/core/blocks"
-	"github.com/prysmaticlabs/prysm/beacon-chain/core/state"
 	"github.com/prysmaticlabs/prysm/beacon-chain/db"
 	"github.com/prysmaticlabs/prysm/beacon-chain/powchain"
 	pb "github.com/prysmaticlabs/prysm/proto/beacon/p2p/v1"
@@ -89,30 +86,19 @@ func main() {
 		chainStartDeposits[i] = deposits[i]
 	}
 
-	genesisState, err := state.GenesisBeaconState(chainStartDeposits, 0, &pb.Eth1Data{
-		BlockHash32:       []byte{},
-		DepositRootHash32: []byte{},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	stateRoot, err := hashutil.HashProto(genesisState)
-	if err != nil {
-		log.Fatal(err)
-	}
-	genesisBlock := blocks.NewGenesisBlock(stateRoot[:])
-	if err := db.SaveBlock(genesisBlock); err != nil {
-		log.Fatal(err)
-	}
-
 	// Get the highest information.
 	highestState, err := dbRO.HeadState(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	//	if err := db.UpdateChainHead(ctx, genesisBlock, genesisState); err != nil {
-	//		log.Fatal(err)
-	//	}
+	genesisState, err := db.HeadState(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	genesisBlock, err := db.BlockBySlot(ctx, params.BeaconConfig().GenesisSlot)
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Infof("Highest state: %d, current state: %d", highestState.Slot-params.BeaconConfig().GenesisSlot, 0)
 	currentState := genesisState
 	currentBlock := genesisBlock
