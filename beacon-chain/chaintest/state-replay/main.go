@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"time"
+
 	"github.com/prysmaticlabs/prysm/shared/hashutil"
 	"github.com/prysmaticlabs/prysm/shared/params"
 
@@ -9,7 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
 	"github.com/prysmaticlabs/prysm/beacon-chain/blockchain"
-	"github.com/prysmaticlabs/prysm/beacon-chain/core/genesis"
+	"github.com/prysmaticlabs/prysm/beacon-chain/core/blocks"
+	"github.com/prysmaticlabs/prysm/beacon-chain/core/state"
 	"github.com/prysmaticlabs/prysm/beacon-chain/db"
 	"github.com/prysmaticlabs/prysm/beacon-chain/powchain"
 	pb "github.com/prysmaticlabs/prysm/proto/beacon/p2p/v1"
@@ -19,18 +22,23 @@ import (
 var log = logrus.WithField("prefix", "state-replay")
 
 func main() {
-	db, err := db.NewDB("~/Documents/Prysmatic/Testing")
+	dbRO, err := db.NewDB("/tmp")
+	if err != nil {
+		log.Fatal(err)
+	}
+	db.ClearDB("/tmp/data")
+	db, err := db.NewDB("/tmp/data")
 	if err != nil {
 		log.Fatal(err)
 	}
 	ctx := context.Background()
 
-	// Chain head:
-	head, err := db.ChainHead()
+	// Chain head
+	head, err := dbRO.ChainHead()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Info(head)
+	log.Infof("Read-only db has a chainhead slot of %d", head.Slot)
 
 	// Setup a chain service and powchain service.
 	rpcClient, err := gethRPC.Dial("wss://goerli.prylabs.net/websocket")
@@ -39,7 +47,7 @@ func main() {
 	}
 	powClient := ethclient.NewClient(rpcClient)
 	cfg := &powchain.Web3ServiceConfig{
-		Endpoint:        	"wss://goerli.prylabs.net/websocket",
+		Endpoint:        "wss://goerli.prylabs.net/websocket",
 		DepositContract: common.HexToAddress("0x76F8c0868EA2a52C9515d4D042243D1f11b3a29D"),
 		Client:          powClient,
 		Reader:          powClient,
@@ -53,14 +61,26 @@ func main() {
 		log.Fatal(err)
 	}
 	chainService, err := blockchain.NewChainService(ctx, &blockchain.Config{
-		BeaconDB: db,
+		BeaconDB:    db,
 		Web3Service: web3Service,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 	// Process past logs.
-	web3Service.InitializeValues()
+	//web3Service.InitializeValues()
+
+	stateInit := make(chan time.Time)
+	stateInitFeed := chainService.StateInitializedFeed()
+	stateInitFeed.Subscribe(stateInit)
+
+	chainService.Start()
+	defer chainService.Stop()
+	web3Service.Start()
+	defer web3Service.Stop()
+
+	log.Info("Waiting for chainstart")
+	<-stateInit
 
 	// Begin the replay of the system.
 	chainStartDeposits := make([]*pb.Deposit, 32)
@@ -68,8 +88,9 @@ func main() {
 	for i := 0; i < 32; i++ {
 		chainStartDeposits[i] = deposits[i]
 	}
-	genesisState, err := genesis.BeaconState(chainStartDeposits, 0, &pb.Eth1Data{
-		BlockHash32: []byte{},
+
+	genesisState, err := state.GenesisBeaconState(chainStartDeposits, 0, &pb.Eth1Data{
+		BlockHash32:       []byte{},
 		DepositRootHash32: []byte{},
 	})
 	if err != nil {
@@ -77,47 +98,50 @@ func main() {
 	}
 	stateRoot, err := hashutil.HashProto(genesisState)
 	if err != nil {
-        log.Fatal(err)
+		log.Fatal(err)
 	}
-	genesisBlock := genesis.NewGenesisBlock(stateRoot[:])
+	genesisBlock := blocks.NewGenesisBlock(stateRoot[:])
 	if err := db.SaveBlock(genesisBlock); err != nil {
 		log.Fatal(err)
 	}
 
 	// Get the highest information.
-	highestState, err := db.HeadState(ctx)
+	highestState, err := dbRO.HeadState(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := db.UpdateChainHead(ctx, genesisBlock, genesisState); err != nil {
-		log.Fatal(err)
-	}
-	log.Infof("Highest state: %d, current state: %d", highestState.Slot-params.BeaconConfig().GenesisSlot, params.BeaconConfig().GenesisSlot)
+	//	if err := db.UpdateChainHead(ctx, genesisBlock, genesisState); err != nil {
+	//		log.Fatal(err)
+	//	}
+	log.Infof("Highest state: %d, current state: %d", highestState.Slot-params.BeaconConfig().GenesisSlot, 0)
 	currentState := genesisState
 	currentBlock := genesisBlock
 	for currentState.Slot != highestState.Slot {
-		newBlock, err := db.BlockBySlot(ctx, currentBlock.Slot+1)
+		newBlock, err := dbRO.BlockBySlot(ctx, currentBlock.Slot+1)
 		if err != nil {
-            log.Fatal(err)
+			log.Fatal(err)
 		}
-		if newBlock != nil {
-			newState, err := chainService.ApplyBlockStateTransition(ctx, newBlock, currentState)
-			if err != nil {
-				log.Error(err)
-			}
-			if err := chainService.ApplyForkChoiceRule(ctx, newBlock, newState); err != nil {
-				log.Error(err)
-			}
-			newState, err = db.HeadState(ctx)
-			if err != nil {
-				log.Fatal(err)
-			}
-			newHead, err := db.ChainHead()
-			if err != nil {
-				log.Fatal(err)
-			}
-			currentState = newState
-			currentBlock = newHead
+		if newBlock == nil {
+			log.Warnf("no block at slot %d", currentState.Slot+1)
+			continue
 		}
+
+		newState, err := chainService.ApplyBlockStateTransition(ctx, newBlock, currentState)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := chainService.ApplyForkChoiceRule(ctx, newBlock, newState); err != nil {
+			log.Fatal(err)
+		}
+		newState, err = db.HeadState(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		newHead, err := db.ChainHead()
+		if err != nil {
+			log.Fatal(err)
+		}
+		currentState = newState
+		currentBlock = newHead
 	}
 }
