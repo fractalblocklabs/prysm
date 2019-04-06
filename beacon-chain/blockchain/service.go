@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/prysmaticlabs/prysm/beacon-chain/attestation"
-	"github.com/prysmaticlabs/prysm/beacon-chain/core/genesis"
+	b "github.com/prysmaticlabs/prysm/beacon-chain/core/blocks"
 	"github.com/prysmaticlabs/prysm/beacon-chain/db"
 	"github.com/prysmaticlabs/prysm/beacon-chain/operations"
 	"github.com/prysmaticlabs/prysm/beacon-chain/powchain"
@@ -147,9 +147,20 @@ func (c *ChainService) initializeBeaconChain(genesisTime time.Time, deposits []*
 	if err != nil {
 		return nil, fmt.Errorf("could not hash beacon state: %v", err)
 	}
-	genBlock := genesis.NewGenesisBlock(stateRoot[:])
+	genBlock := b.NewGenesisBlock(stateRoot[:])
+	/*
+		genRoot, err := hashutil.HashProto(beaconState)
+		if err != nil {
+			return nil, fmt.Errorf("could not hash genesis block: %v", err)
+		}
+	*/
 	// TODO(#2011): Remove this in state caching.
 	beaconState.LatestBlock = genBlock
+	/*
+		beaconState.PreviousJustifiedRoot = genRoot[:]
+		beaconState.JustifiedRoot = genRoot[:]
+		beaconState.FinalizedRoot = genRoot[:]
+	*/
 
 	if err := c.beaconDB.SaveBlock(genBlock); err != nil {
 		return nil, fmt.Errorf("could not save genesis block to disk: %v", err)
