@@ -12,7 +12,6 @@ import (
 	"github.com/prysmaticlabs/prysm/beacon-chain/blockchain"
 	"github.com/prysmaticlabs/prysm/beacon-chain/db"
 	"github.com/prysmaticlabs/prysm/beacon-chain/powchain"
-	pb "github.com/prysmaticlabs/prysm/proto/beacon/p2p/v1"
 	"github.com/sirupsen/logrus"
 )
 
@@ -80,12 +79,6 @@ func main() {
 	<-stateInit
 
 	// Begin the replay of the system.
-	chainStartDeposits := make([]*pb.Deposit, 32)
-	deposits := db.AllDeposits(ctx, nil)
-	for i := 0; i < 32; i++ {
-		chainStartDeposits[i] = deposits[i]
-	}
-
 	// Get the highest information.
 	highestState, err := dbRO.HeadState(ctx)
 	if err != nil {
