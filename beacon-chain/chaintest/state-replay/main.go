@@ -4,14 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/shared/params"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
+	"github.com/prysmaticlabs/prysm/beacon-chain/attestation"
 	"github.com/prysmaticlabs/prysm/beacon-chain/blockchain"
 	"github.com/prysmaticlabs/prysm/beacon-chain/db"
 	"github.com/prysmaticlabs/prysm/beacon-chain/powchain"
+	"github.com/prysmaticlabs/prysm/shared/featureconfig"
+	"github.com/prysmaticlabs/prysm/shared/params"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,6 +29,8 @@ func main() {
 		log.Fatal(err)
 	}
 	ctx := context.Background()
+	params.UseDemoBeaconConfig()
+	featureconfig.InitFeatureConfig(&featureconfig.FeatureFlagConfig{})
 
 	// Chain head
 	head, err := dbRO.ChainHead()
@@ -56,20 +59,24 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	attService := attestation.NewAttestationService(ctx, &attestation.Config{
+		BeaconDB: db,
+	})
 	chainService, err := blockchain.NewChainService(ctx, &blockchain.Config{
 		BeaconDB:    db,
+		AttsService: attService,
 		Web3Service: web3Service,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Process past logs.
-	//web3Service.InitializeValues()
 
 	stateInit := make(chan time.Time)
 	stateInitFeed := chainService.StateInitializedFeed()
 	stateInitFeed.Subscribe(stateInit)
 
+	attService.Start()
+	defer attService.Stop()
 	chainService.Start()
 	defer chainService.Stop()
 	web3Service.Start()
@@ -88,26 +95,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	genesisBlock, err := db.BlockBySlot(ctx, params.BeaconConfig().GenesisSlot)
-	if err != nil {
-		log.Fatal(err)
-	}
 	log.Infof("Highest state: %d, current state: %d", highestState.Slot-params.BeaconConfig().GenesisSlot, 0)
 	currentState := genesisState
-	currentBlock := genesisBlock
-	for currentState.Slot != highestState.Slot {
-		newBlock, err := dbRO.BlockBySlot(ctx, currentBlock.Slot+1)
+	for currentSlot := currentState.Slot + 1; currentSlot <= highestState.Slot; currentSlot++ {
+		log.Infof("Slot %d", currentSlot)
+		newBlock, err := dbRO.BlockBySlot(ctx, currentSlot)
 		if err != nil {
 			log.Fatal(err)
 		}
 		if newBlock == nil {
-			log.Warnf("no block at slot %d", currentState.Slot+1)
+			log.Warnf("no block at slot %d", currentSlot)
 			continue
 		}
 
 		newState, err := chainService.ApplyBlockStateTransition(ctx, newBlock, currentState)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 		if err := chainService.ApplyForkChoiceRule(ctx, newBlock, newState); err != nil {
 			log.Fatal(err)
@@ -121,6 +124,6 @@ func main() {
 			log.Fatal(err)
 		}
 		currentState = newState
-		currentBlock = newHead
+		_ = newHead
 	}
 }
