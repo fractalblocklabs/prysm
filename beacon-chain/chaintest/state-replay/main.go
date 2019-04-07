@@ -107,6 +107,9 @@ func main() {
 			log.Warnf("no block at slot %d", currentSlot)
 			continue
 		}
+		if err := db.SaveBlock(newBlock); err != nil {
+			log.Fatal(err)
+		}
 
 		newState, err := chainService.ApplyBlockStateTransition(ctx, newBlock, currentState)
 		if err != nil {
