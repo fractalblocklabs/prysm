@@ -110,7 +110,7 @@ func main() {
 
 		newState, err := chainService.ApplyBlockStateTransition(ctx, newBlock, currentState)
 		if err != nil {
-			log.Error(err)
+			log.Fatal(err)
 		}
 		if err := chainService.ApplyForkChoiceRule(ctx, newBlock, newState); err != nil {
 			log.Fatal(err)
