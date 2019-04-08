@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
+	"github.com/gogo/protobuf/proto"
 	"github.com/prysmaticlabs/prysm/beacon-chain/attestation"
 	"github.com/prysmaticlabs/prysm/beacon-chain/blockchain"
 	"github.com/prysmaticlabs/prysm/beacon-chain/db"
@@ -47,7 +48,7 @@ func main() {
 	powClient := ethclient.NewClient(rpcClient)
 	cfg := &powchain.Web3ServiceConfig{
 		Endpoint:        "wss://goerli.prylabs.net/websocket",
-		DepositContract: common.HexToAddress("0x76F8c0868EA2a52C9515d4D042243D1f11b3a29D"),
+		DepositContract: common.HexToAddress("0xd19b05F73b929f04Bd813470790fF4dEA39A86fC"),
 		Client:          powClient,
 		Reader:          powClient,
 		Logger:          powClient,
@@ -96,6 +97,19 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Infof("Highest state: %d, current state: %d", highestState.Slot-params.BeaconConfig().GenesisSlot, 0)
+
+	genesisBlock, err := db.BlockBySlot(ctx, params.BeaconConfig().GenesisSlot)
+	if err != nil {
+		log.Fatal(err)
+	}
+	genesisBlockRO, err := dbRO.BlockBySlot(ctx, params.BeaconConfig().GenesisSlot)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !proto.Equal(genesisBlock, genesisBlockRO) {
+		log.Fatal("Genesis blocks are not equal")
+	}
+
 	currentState := genesisState
 	for currentSlot := currentState.Slot + 1; currentSlot <= highestState.Slot; currentSlot++ {
 		log.Infof("Slot %d", currentSlot)
@@ -107,21 +121,26 @@ func main() {
 			log.Warnf("no block at slot %d", currentSlot)
 			continue
 		}
-		if err := db.SaveBlock(newBlock); err != nil {
+		//	if err := db.SaveBlock(newBlock); err != nil {
+		//		log.Fatal(err)
+		//	}
+
+		newState, err := chainService.ReceiveBlock(ctx, newBlock)
+		if err != nil {
 			log.Fatal(err)
 		}
 
-		newState, err := chainService.ApplyBlockStateTransition(ctx, newBlock, currentState)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := chainService.ApplyForkChoiceRule(ctx, newBlock, newState); err != nil {
-			log.Fatal(err)
-		}
-		newState, err = db.HeadState(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
+		//		newState, err := chainService.ApplyBlockStateTransition(ctx, newBlock, currentState)
+		//		if err != nil {
+		//			log.Fatal(err)
+		//		}
+		//		if err := chainService.ApplyForkChoiceRule(ctx, newBlock, newState); err != nil {
+		//			log.Fatal(err)
+		//		}
+		//		newState, err = db.HeadState(ctx)
+		//		if err != nil {
+		//			log.Fatal(err)
+		//		}
 		newHead, err := db.ChainHead()
 		if err != nil {
 			log.Fatal(err)
