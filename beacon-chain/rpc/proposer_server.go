@@ -65,7 +65,7 @@ func (ps *ProposerServer) ProposeBlock(ctx context.Context, blk *pbp2p.BeaconBlo
 	}
 	log.WithField("headRoot", fmt.Sprintf("0x%x", h)).Info("Chain head block and state updated")
 
-	if err := ps.beaconDB.SaveHistoricalState(beaconState); err != nil {
+	if err := ps.beaconDB.SaveHistoricalState(ctx, beaconState); err != nil {
 		log.Errorf("Could not save new historical state: %v", err)
 	}
 	return &pb.ProposeResponse{BlockRootHash32: h[:]}, nil
@@ -96,7 +96,7 @@ func (ps *ProposerServer) PendingAttestations(ctx context.Context, req *pb.Pendi
 	}
 	for beaconState.Slot < req.ProposalBlockSlot {
 		beaconState, err = state.ExecuteStateTransition(
-			ctx, beaconState, nil /* block */, blockRoot, ps.beaconDB, &state.TransitionConfig{},
+			ctx, beaconState, nil /* block */, blockRoot, &state.TransitionConfig{},
 		)
 		if err != nil {
 			return nil, fmt.Errorf("could not execute head transition: %v", err)
@@ -168,7 +168,6 @@ func (ps *ProposerServer) ComputeStateRoot(ctx context.Context, req *pbp2p.Beaco
 			beaconState,
 			nil,
 			parentHash,
-			ps.beaconDB,
 			state.DefaultConfig(),
 		)
 		if err != nil {
@@ -180,7 +179,6 @@ func (ps *ProposerServer) ComputeStateRoot(ctx context.Context, req *pbp2p.Beaco
 		beaconState,
 		req,
 		parentHash,
-		ps.beaconDB,
 		state.DefaultConfig(),
 	)
 	if err != nil {

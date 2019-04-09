@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/prysmaticlabs/prysm/beacon-chain/attestation"
-	"github.com/prysmaticlabs/prysm/beacon-chain/core/genesis"
+	b "github.com/prysmaticlabs/prysm/beacon-chain/core/blocks"
 	"github.com/prysmaticlabs/prysm/beacon-chain/db"
 	"github.com/prysmaticlabs/prysm/beacon-chain/operations"
 	"github.com/prysmaticlabs/prysm/beacon-chain/powchain"
@@ -135,7 +135,7 @@ func (c *ChainService) initializeBeaconChain(genesisTime time.Time, deposits []*
 	log.Info("ChainStart time reached, starting the beacon chain!")
 	c.genesisTime = genesisTime
 	unixTime := uint64(genesisTime.Unix())
-	if err := c.beaconDB.InitializeState(unixTime, deposits, eth1data); err != nil {
+	if err := c.beaconDB.InitializeState(c.ctx, unixTime, deposits, eth1data); err != nil {
 		return nil, fmt.Errorf("could not initialize beacon state to disk: %v", err)
 	}
 	beaconState, err := c.beaconDB.HeadState(c.ctx)
@@ -147,7 +147,7 @@ func (c *ChainService) initializeBeaconChain(genesisTime time.Time, deposits []*
 	if err != nil {
 		return nil, fmt.Errorf("could not hash beacon state: %v", err)
 	}
-	genBlock := genesis.NewGenesisBlock(stateRoot[:])
+	genBlock := b.NewGenesisBlock(stateRoot[:])
 	// TODO(#2011): Remove this in state caching.
 	beaconState.LatestBlock = genBlock
 

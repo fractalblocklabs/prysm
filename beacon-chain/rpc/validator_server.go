@@ -15,6 +15,19 @@ import (
 	"github.com/prysmaticlabs/prysm/shared/params"
 )
 
+type ValidatorConfig struct {
+	BeaconDB *db.BeaconDB
+	ChainService chainService
+}
+
+func NewValidatorServer(ctx context.Context, cfg *ValidatorConfig) *ValidatorServer {
+	return &ValidatorServer{
+		ctx: ctx,
+		beaconDB: cfg.BeaconDB,
+		chainService: cfg.ChainService,
+	}
+}
+
 // ValidatorServer defines a server implementation of the gRPC Validator service,
 // providing RPC endpoints for obtaining validator assignments per epoch, the slots
 // and shards in which particular validators need to perform their responsibilities,
@@ -116,10 +129,16 @@ func (vs *ValidatorServer) ValidatorPerformance(
 func (vs *ValidatorServer) CommitteeAssignment(
 	ctx context.Context,
 	req *pb.CommitteeAssignmentsRequest) (*pb.CommitteeAssignmentResponse, error) {
-	beaconState, err := vs.beaconDB.HeadState(ctx)
+	head, err := vs.beaconDB.ChainHead()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch beacon state: %v", err)
 	}
+	beaconState, err := vs.beaconDB.HistoricalStateFromSlot(ctx, head.Slot)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch beacon state: %v", err)
+	}
+	log.Infof("In assign, head slot %d, state slot %d", head.Slot-params.BeaconConfig().GenesisSlot, beaconState.Slot-params.BeaconConfig().GenesisSlot)
+	log.Infof("In assign, epoch start %d", req.EpochStart-params.BeaconConfig().GenesisSlot)
 	var assignments []*pb.CommitteeAssignmentResponse_CommitteeAssignment
 	for _, pk := range req.PublicKeys {
 		a, err := vs.assignment(ctx, pk, beaconState, req.EpochStart)
@@ -160,9 +179,11 @@ func (vs *ValidatorServer) assignment(
 	if err != nil {
 		return nil, fmt.Errorf("could not hash block: %v", err)
 	}
-	for beaconState.Slot < epochStart {
-		beaconState, err = state.ExecuteStateTransition(
-			ctx, beaconState, nil /* block */, headRoot, vs.beaconDB, state.DefaultConfig(),
+	newState := beaconState
+	log.Infof("In nested assign, newstate slot %d, epoch start %d", newState.Slot-params.BeaconConfig().GenesisSlot, epochStart-params.BeaconConfig().GenesisSlot)
+	for newState.Slot < epochStart {
+		newState, err = state.ExecuteStateTransition(
+			ctx, newState, nil /* block */, headRoot, state.DefaultConfig(),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("could not execute head transition: %v", err)
@@ -170,11 +191,11 @@ func (vs *ValidatorServer) assignment(
 	}
 
 	committee, shard, slot, isProposer, err :=
-		helpers.CommitteeAssignment(beaconState, epochStart, uint64(idx), false)
+		helpers.CommitteeAssignment(newState, epochStart, uint64(idx), false)
 	if err != nil {
 		return nil, err
 	}
-	status, err := vs.validatorStatus(pubkey, beaconState)
+	status, err := vs.validatorStatus(pubkey, newState)
 	if err != nil {
 		return nil, err
 	}

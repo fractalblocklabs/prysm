@@ -209,7 +209,6 @@ func (c *ChainService) runStateTransition(
 		beaconState,
 		block,
 		headRoot,
-		c.beaconDB,
 		&state.TransitionConfig{
 			VerifySignatures: false, // We disable signature verification for now.
 			Logging:          true,  // We enable logging in this state transition call.
@@ -228,7 +227,7 @@ func (c *ChainService) runStateTransition(
 		).Info("Block transition successfully processed")
 
 		// Save Historical States.
-		if err := c.beaconDB.SaveHistoricalState(beaconState); err != nil {
+		if err := c.beaconDB.SaveHistoricalState(ctx, beaconState); err != nil {
 			return nil, fmt.Errorf("could not save historical state: %v", err)
 		}
 	}
