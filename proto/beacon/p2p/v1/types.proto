@@ -132,6 +132,7 @@ message BeaconBlockBody {
   repeated AttesterSlashing attester_slashings = 3;
   repeated Deposit deposits = 4;
   repeated VoluntaryExit voluntary_exits = 5;
+  repeated
 }
 
 message DepositInput {
