@@ -3,9 +3,11 @@
 package helpers
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"go.opencensus.io/trace"
 
 	"github.com/prysmaticlabs/prysm/beacon-chain/cache"
 	"github.com/prysmaticlabs/prysm/beacon-chain/utils"
@@ -254,10 +256,12 @@ func Shuffling(
 //            participants.append(validator_index)
 //    return participants
 func AttestationParticipants(
+	ctx context.Context,
 	state *pb.BeaconState,
 	attestationData *pb.AttestationData,
 	bitfield []byte) ([]uint64, error) {
-
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.committee.AttestationParticipants")
+	defer span.End()
 	var cachedCommittees *cache.CommitteesInSlot
 	var err error
 	slot := attestationData.Slot

@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -353,7 +354,7 @@ func TestAttestationParticipants_NoCommitteeCache(t *testing.T) {
 		attestationData.Slot = tt.attestationSlot
 		attestationData.Shard = tt.shard
 
-		result, err := AttestationParticipants(state, attestationData, tt.bitfield)
+		result, err := AttestationParticipants(context.Background(), state, attestationData, tt.bitfield)
 		if err != nil {
 			t.Errorf("Failed to get attestation participants: %v", err)
 		}
@@ -385,7 +386,7 @@ func TestAttestationParticipants_IncorrectBitfield(t *testing.T) {
 	}
 	attestationData := &pb.AttestationData{}
 
-	if _, err := AttestationParticipants(state, attestationData, []byte{}); err == nil {
+	if _, err := AttestationParticipants(context.Background(), state, attestationData, []byte{}); err == nil {
 		t.Error("attestation participants should have failed with incorrect bitfield")
 	}
 }
@@ -536,7 +537,7 @@ func TestAttestationParticipants_CommitteeCacheHit(t *testing.T) {
 		Shard: 234,
 		Slot:  params.BeaconConfig().GenesisSlot + uint64(slotOffset),
 	}
-	result, err := AttestationParticipants(&pb.BeaconState{}, attestationData, []byte{0xC0})
+	result, err := AttestationParticipants(context.Background(), &pb.BeaconState{}, attestationData, []byte{0xC0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +574,7 @@ func TestAttestationParticipants_CommitteeCacheMissSaved(t *testing.T) {
 		Slot:  params.BeaconConfig().GenesisSlot + slotOffset,
 	}
 
-	result, err := AttestationParticipants(state, attestationData, []byte{0xC0})
+	result, err := AttestationParticipants(context.Background(), state, attestationData, []byte{0xC0})
 	if err != nil {
 		t.Fatal(err)
 	}

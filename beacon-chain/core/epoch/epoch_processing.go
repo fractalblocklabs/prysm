@@ -5,8 +5,10 @@
 package epoch
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
+	"go.opencensus.io/trace"
 
 	"github.com/prysmaticlabs/prysm/beacon-chain/core/blocks"
 
@@ -344,7 +346,9 @@ func CleanupAttestations(state *pb.BeaconState) *pb.BeaconState {
 // 	LATEST_INDEX_ROOTS_LENGTH] =
 // 	hash_tree_root(get_active_validator_indices(state,
 // 	next_epoch + ACTIVATION_EXIT_DELAY))
-func UpdateLatestActiveIndexRoots(state *pb.BeaconState) (*pb.BeaconState, error) {
+func UpdateLatestActiveIndexRoots(ctx context.Context, state *pb.BeaconState) (*pb.BeaconState, error) {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.UpdateLatestActiveIndexRoots")
+	defer span.End()
 	nextEpoch := helpers.NextEpoch(state) + params.BeaconConfig().ActivationExitDelay
 	validatorIndices := helpers.ActiveValidatorIndices(state.ValidatorRegistry, nextEpoch)
 	indicesBytes := []byte{}

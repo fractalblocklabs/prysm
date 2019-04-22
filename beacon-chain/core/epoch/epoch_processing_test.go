@@ -2,6 +2,7 @@ package epoch
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"reflect"
@@ -578,7 +579,7 @@ func TestUpdateLatestActiveIndexRoots_UpdatesActiveIndexRoots(t *testing.T) {
 	state := &pb.BeaconState{
 		Slot:                   epoch * params.BeaconConfig().SlotsPerEpoch,
 		LatestIndexRootHash32S: latestActiveIndexRoots}
-	newState, err := UpdateLatestActiveIndexRoots(state)
+	newState, err := UpdateLatestActiveIndexRoots(context.Background(), state)
 	if err != nil {
 		t.Fatalf("could not update latest index roots: %v", err)
 	}

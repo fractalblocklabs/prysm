@@ -292,6 +292,7 @@ func ProcessEpoch(ctx context.Context, state *pb.BeaconState, block *pb.BeaconBl
 		// Apply rewards/penalties to validators for attesting
 		// expected FFG source.
 		state = bal.ExpectedFFGSource(
+			ctx,
 			state,
 			prevEpochAttesterIndices,
 			prevEpochAttestingBalance,
@@ -302,6 +303,7 @@ func ProcessEpoch(ctx context.Context, state *pb.BeaconState, block *pb.BeaconBl
 		// Apply rewards/penalties to validators for attesting
 		// expected FFG target.
 		state = bal.ExpectedFFGTarget(
+			ctx,
 			state,
 			prevEpochBoundaryAttesterIndices,
 			prevEpochBoundaryAttestingBalances,
@@ -312,6 +314,7 @@ func ProcessEpoch(ctx context.Context, state *pb.BeaconState, block *pb.BeaconBl
 		// Apply rewards/penalties to validators for attesting
 		// expected beacon chain head.
 		state = bal.ExpectedBeaconChainHead(
+			ctx,
 			state,
 			prevEpochHeadAttesterIndices,
 			prevEpochHeadAttestingBalances,
@@ -322,6 +325,7 @@ func ProcessEpoch(ctx context.Context, state *pb.BeaconState, block *pb.BeaconBl
 		// Apply rewards for to validators for including attestations
 		// based on inclusion distance.
 		state, err = bal.InclusionDistance(
+			ctx,
 			state,
 			prevEpochAttesterIndices,
 			totalBalance)
@@ -336,12 +340,14 @@ func ProcessEpoch(ctx context.Context, state *pb.BeaconState, block *pb.BeaconBl
 		log.WithField("epochSinceFinality", epochsSinceFinality).Info("Applying quadratic leak penalties")
 		// Apply penalties for long inactive FFG source participants.
 		state = bal.InactivityFFGSource(
+			ctx,
 			state,
 			prevEpochAttesterIndices,
 			totalBalance,
 			epochsSinceFinality)
 		// Apply penalties for long inactive FFG target participants.
 		state = bal.InactivityFFGTarget(
+			ctx,
 			state,
 			prevEpochBoundaryAttesterIndices,
 			totalBalance,
@@ -349,18 +355,21 @@ func ProcessEpoch(ctx context.Context, state *pb.BeaconState, block *pb.BeaconBl
 		// Apply penalties for long inactive validators who didn't
 		// attest to head canonical chain.
 		state = bal.InactivityChainHead(
+			ctx,
 			state,
 			prevEpochHeadAttesterIndices,
 			totalBalance)
 		// Apply penalties for long inactive validators who also
 		// exited with penalties.
 		state = bal.InactivityExitedPenalties(
+			ctx,
 			state,
 			totalBalance,
 			epochsSinceFinality)
 		// Apply penalties for long inactive validators that
 		// don't include attestations.
 		state, err = bal.InactivityInclusionDistance(
+			ctx,
 			state,
 			prevEpochAttesterIndices,
 			totalBalance)
@@ -371,6 +380,7 @@ func ProcessEpoch(ctx context.Context, state *pb.BeaconState, block *pb.BeaconBl
 
 	// Process Attestation Inclusion Rewards.
 	state, err = bal.AttestationInclusion(
+		ctx,
 		state,
 		totalBalance,
 		prevEpochAttesterIndices)
@@ -419,7 +429,7 @@ func ProcessEpoch(ctx context.Context, state *pb.BeaconState, block *pb.BeaconBl
 
 	// Final housekeeping updates.
 	// Update index roots from current epoch to next epoch.
-	state, err = e.UpdateLatestActiveIndexRoots(state)
+	state, err = e.UpdateLatestActiveIndexRoots(ctx, state)
 	if err != nil {
 		return nil, fmt.Errorf("could not update latest index roots: %v", err)
 	}

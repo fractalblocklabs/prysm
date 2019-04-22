@@ -2,6 +2,7 @@ package epoch
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -488,7 +489,7 @@ func TestInclusionSlot_GetsCorrectSlot(t *testing.T) {
 			AggregationBitfield: participationBitfield,
 			InclusionSlot:       102},
 	}
-	slot, err := InclusionSlot(state, 251)
+	slot, err := InclusionSlot(context.Background(), state, 251)
 	if err != nil {
 		t.Fatalf("Could not execute InclusionSlot: %v", err)
 	}
@@ -508,7 +509,7 @@ func TestInclusionSlot_InvalidBitfield(t *testing.T) {
 	}
 
 	want := fmt.Sprintf("wanted participants bitfield length %d, got: %d", 16, 0)
-	if _, err := InclusionSlot(state, 0); !strings.Contains(err.Error(), want) {
+	if _, err := InclusionSlot(context.Background(), state, 0); !strings.Contains(err.Error(), want) {
 		t.Errorf("Expected %s, received %v", want, err)
 	}
 }
@@ -518,7 +519,7 @@ func TestInclusionSlot_SlotNotFound(t *testing.T) {
 
 	badIndex := uint64(10000)
 	want := fmt.Sprintf("could not find inclusion slot for validator index %d", badIndex)
-	if _, err := InclusionSlot(state, badIndex); !strings.Contains(err.Error(), want) {
+	if _, err := InclusionSlot(context.Background(), state, badIndex); !strings.Contains(err.Error(), want) {
 		t.Errorf("Expected %s, received %v", want, err)
 	}
 }
@@ -535,7 +536,7 @@ func TestInclusionDistance_CorrectDistance(t *testing.T) {
 			AggregationBitfield: participationBitfield,
 			InclusionSlot:       params.BeaconConfig().GenesisSlot + 100},
 	}
-	distance, err := InclusionDistance(state, 251)
+	distance, err := InclusionDistance(context.Background(), state, 251)
 	if err != nil {
 		t.Fatalf("Could not execute InclusionDistance: %v", err)
 	}
@@ -558,7 +559,7 @@ func TestInclusionDistance_InvalidBitfield(t *testing.T) {
 	}
 
 	want := fmt.Sprintf("wanted participants bitfield length %d, got: %d", 16, 0)
-	if _, err := InclusionDistance(state, 0); !strings.Contains(err.Error(), want) {
+	if _, err := InclusionDistance(context.Background(), state, 0); !strings.Contains(err.Error(), want) {
 		t.Errorf("Expected %s, received %v", want, err)
 	}
 }
@@ -568,7 +569,7 @@ func TestInclusionDistance_NotFound(t *testing.T) {
 
 	badIndex := uint64(10000)
 	want := fmt.Sprintf("could not find inclusion distance for validator index %d", badIndex)
-	if _, err := InclusionDistance(state, badIndex); !strings.Contains(err.Error(), want) {
+	if _, err := InclusionDistance(context.Background(), state, badIndex); !strings.Contains(err.Error(), want) {
 		t.Errorf("Expected %s, received %v", want, err)
 	}
 }

@@ -5,8 +5,10 @@
 package balances
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"go.opencensus.io/trace"
 
 	"github.com/prysmaticlabs/prysm/beacon-chain/core/epoch"
 	"github.com/prysmaticlabs/prysm/beacon-chain/core/helpers"
@@ -28,10 +30,13 @@ import (
 //	  Any active validator v not in previous_epoch_justified_attester_indices
 //	  loses base_reward(state, index).
 func ExpectedFFGSource(
+	ctx context.Context,
 	state *pb.BeaconState,
 	justifiedAttesterIndices []uint64,
 	justifiedAttestingBalance uint64,
 	totalBalance uint64) *pb.BeaconState {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.ExpectedFFGSource")
+	defer span.End()
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 
 	for _, index := range justifiedAttesterIndices {
@@ -63,11 +68,13 @@ func ExpectedFFGSource(
 //	  Any active validator index not in previous_epoch_boundary_attester_indices loses
 //	  base_reward(state, index).
 func ExpectedFFGTarget(
+	ctx context.Context,
 	state *pb.BeaconState,
 	boundaryAttesterIndices []uint64,
 	boundaryAttestingBalance uint64,
 	totalBalance uint64) *pb.BeaconState {
-
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.ExpectedFFGTarget")
+	defer span.End()
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 
 	for _, index := range boundaryAttesterIndices {
@@ -99,10 +106,13 @@ func ExpectedFFGTarget(
 //    Any active validator index not in previous_epoch_head_attester_indices loses
 //    base_reward(state, index).
 func ExpectedBeaconChainHead(
+	ctx context.Context,
 	state *pb.BeaconState,
 	headAttesterIndices []uint64,
 	headAttestingBalance uint64,
 	totalBalance uint64) *pb.BeaconState {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.ExpectedBeaconChainHead")
+	defer span.End()
 
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 
@@ -131,14 +141,17 @@ func ExpectedBeaconChainHead(
 //    base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY //
 //    inclusion_distance(state, index)
 func InclusionDistance(
+	ctx context.Context,
 	state *pb.BeaconState,
 	attesterIndices []uint64,
 	totalBalance uint64) (*pb.BeaconState, error) {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.InclusionDistance")
+	defer span.End()
 
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 
 	for _, index := range attesterIndices {
-		inclusionDistance, err := epoch.InclusionDistance(state, index)
+		inclusionDistance, err := epoch.InclusionDistance(ctx, state, index)
 		if err != nil {
 			return nil, fmt.Errorf("could not get inclusion distance: %v", err)
 		}
@@ -161,10 +174,13 @@ func InclusionDistance(
 //    Any active validator index not in previous_epoch_justified_attester_indices,
 //    loses inactivity_penalty(state, index, epochs_since_finality)
 func InactivityFFGSource(
+	ctx context.Context,
 	state *pb.BeaconState,
 	justifiedAttesterIndices []uint64,
 	totalBalance uint64,
 	epochsSinceFinality uint64) *pb.BeaconState {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.InactivityFFGSource")
+	defer span.End()
 
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 	activeValidatorIndices := helpers.ActiveValidatorIndices(state.ValidatorRegistry, helpers.CurrentEpoch(state))
@@ -185,10 +201,13 @@ func InactivityFFGSource(
 //    Any active validator index not in previous_epoch_boundary_attester_indices,
 // 	  loses inactivity_penalty(state, index, epochs_since_finality)
 func InactivityFFGTarget(
+	ctx context.Context,
 	state *pb.BeaconState,
 	boundaryAttesterIndices []uint64,
 	totalBalance uint64,
 	epochsSinceFinality uint64) *pb.BeaconState {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.InactivityFFGTarget")
+	defer span.End()
 
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 	activeValidatorIndices := helpers.ActiveValidatorIndices(state.ValidatorRegistry, helpers.CurrentEpoch(state))
@@ -209,9 +228,12 @@ func InactivityFFGTarget(
 //    Any active validator index not in previous_epoch_head_attester_indices,
 // 	  loses base_reward(state, index)
 func InactivityChainHead(
+	ctx context.Context,
 	state *pb.BeaconState,
 	headAttesterIndices []uint64,
 	totalBalance uint64) *pb.BeaconState {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.InactivityChainHead")
+	defer span.End()
 
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 	activeValidatorIndices := helpers.ActiveValidatorIndices(state.ValidatorRegistry, helpers.CurrentEpoch(state))
@@ -232,9 +254,12 @@ func InactivityChainHead(
 //    loses 2 * inactivity_penalty(state, index, epochs_since_finality) +
 //    base_reward(state, index).
 func InactivityExitedPenalties(
+	ctx context.Context,
 	state *pb.BeaconState,
 	totalBalance uint64,
 	epochsSinceFinality uint64) *pb.BeaconState {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.InactivityExitedPenalties")
+	defer span.End()
 
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 	currentEpoch := helpers.CurrentEpoch(state)
@@ -258,14 +283,17 @@ func InactivityExitedPenalties(
 //    base_reward(state, index) - base_reward(state, index) *
 //    MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)
 func InactivityInclusionDistance(
+	ctx context.Context,
 	state *pb.BeaconState,
 	attesterIndices []uint64,
 	totalBalance uint64) (*pb.BeaconState, error) {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.InactivityInclusionDistance")
+	defer span.End()
 
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 
 	for _, index := range attesterIndices {
-		inclusionDistance, err := epoch.InclusionDistance(state, index)
+		inclusionDistance, err := epoch.InclusionDistance(ctx, state, index)
 		if err != nil {
 			return nil, fmt.Errorf("could not get inclusion distance: %v", err)
 		}
@@ -287,13 +315,16 @@ func InactivityInclusionDistance(
 //    and set state.validator_balances[proposer_index] +=
 //    base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
 func AttestationInclusion(
+	ctx context.Context,
 	state *pb.BeaconState,
 	totalBalance uint64,
 	prevEpochAttesterIndices []uint64) (*pb.BeaconState, error) {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.Attestationinclusion")
+	defer span.End()
 
 	baseRewardQuotient := helpers.BaseRewardQuotient(totalBalance)
 	for _, index := range prevEpochAttesterIndices {
-		slot, err := epoch.InclusionSlot(state, index)
+		slot, err := epoch.InclusionSlot(ctx, state, index)
 		if err != nil {
 			return nil, fmt.Errorf("could not get inclusion slot: %v", err)
 		}

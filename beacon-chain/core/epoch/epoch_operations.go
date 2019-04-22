@@ -6,7 +6,9 @@ package epoch
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"go.opencensus.io/trace"
 	"math"
 
 	block "github.com/prysmaticlabs/prysm/beacon-chain/core/blocks"
@@ -163,10 +165,12 @@ func TotalBalance(
 //    get_attestation_participants(state, a.data, a.participation_bitfield)
 //    If multiple attestations are applicable, the attestation with
 //    lowest `slot_included` is considered.
-func InclusionSlot(state *pb.BeaconState, validatorIndex uint64) (uint64, error) {
+func InclusionSlot(ctx context.Context, state *pb.BeaconState, validatorIndex uint64) (uint64, error) {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.InclusionSlot")
+	defer span.End()
 	lowestSlotIncluded := uint64(math.MaxUint64)
 	for _, attestation := range state.LatestAttestations {
-		participatedValidators, err := helpers.AttestationParticipants(state, attestation.Data, attestation.AggregationBitfield)
+		participatedValidators, err := helpers.AttestationParticipants(ctx, state, attestation.Data, attestation.AggregationBitfield)
 		if err != nil {
 			return 0, fmt.Errorf("could not get attestation participants: %v", err)
 		}
@@ -191,10 +195,12 @@ func InclusionSlot(state *pb.BeaconState, validatorIndex uint64) (uint64, error)
 //    Let inclusion_distance(state, index) =
 //    a.slot_included - a.data.slot where a is the above attestation same as
 //    inclusion_slot.
-func InclusionDistance(state *pb.BeaconState, validatorIndex uint64) (uint64, error) {
+func InclusionDistance(ctx context.Context, state *pb.BeaconState, validatorIndex uint64) (uint64, error) {
+	ctx, span := trace.StartSpan(ctx, "beacon-chain.ChainService.state.ProcessEpoch.InclusionDistance")
+	defer span.End()
 
 	for _, attestation := range state.LatestAttestations {
-		participatedValidators, err := helpers.AttestationParticipants(state, attestation.Data, attestation.AggregationBitfield)
+		participatedValidators, err := helpers.AttestationParticipants(ctx, state, attestation.Data, attestation.AggregationBitfield)
 		if err != nil {
 			return 0, fmt.Errorf("could not get attestation participants: %v", err)
 		}

@@ -6,6 +6,7 @@ package validators
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
 
@@ -47,6 +48,7 @@ func ValidatorIndices(
 	var attesterIndicesIntersection []uint64
 	for _, attestation := range attestations {
 		attesterIndices, err := helpers.AttestationParticipants(
+			context.Background(),
 			state,
 			attestation.Data,
 			attestation.AggregationBitfield)
@@ -83,7 +85,7 @@ func AttestingValidatorIndices(
 		if attestation.Data.Shard == shard &&
 			bytes.Equal(attestation.Data.CrosslinkDataRootHash32, crosslinkDataRoot) {
 
-			validatorIndicesCommittee, err := helpers.AttestationParticipants(state, attestation.Data, attestation.AggregationBitfield)
+			validatorIndicesCommittee, err := helpers.AttestationParticipants(context.Background(), state, attestation.Data, attestation.AggregationBitfield)
 			if err != nil {
 				return nil, fmt.Errorf("could not get attester indices: %v", err)
 			}
