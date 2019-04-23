@@ -178,7 +178,7 @@ func (a *Service) UpdateLatestAttestation(ctx context.Context, attestation *pb.A
 
 	// Potential improvement, instead of getting the state,
 	// we could get a mapping of validator index to public key.
-	beaconState, err := a.beaconDB.HeadState(ctx)
+	beaconState, err := a.beaconDB.RiskyHeadState(ctx)
 	if err != nil {
 		return err
 	}
