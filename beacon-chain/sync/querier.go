@@ -166,6 +166,10 @@ func (q *Querier) run() {
 				"Latest chain head is at slot: %d and state root: %#x",
 				response.CanonicalSlot-params.BeaconConfig().GenesisSlot, response.CanonicalStateRootHash32,
 			)
+			if response.DepositContractAddress != q.db.DepositContractAddress(q.ctx) {
+				log.Error("Your node has a different deposit contract address than your peers, restart it with --clear-db enabled")
+				continue
+			}
 			q.currentHeadSlot = response.CanonicalSlot
 			q.currentStateRoot = response.CanonicalStateRootHash32
 			q.currentFinalizedStateRoot = bytesutil.ToBytes32(response.FinalizedStateRootHash32S)

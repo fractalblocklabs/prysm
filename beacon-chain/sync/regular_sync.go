@@ -392,6 +392,7 @@ func (rs *RegularSync) handleChainHeadRequest(msg p2p.Message) error {
 		CanonicalSlot:             block.Slot,
 		CanonicalStateRootHash32:  stateRoot[:],
 		FinalizedStateRootHash32S: finalizedRoot[:],
+		DepositContractAddress: rs.db.DepositContractAddress(ctx),
 	}
 	ctx, ChainHead := trace.StartSpan(ctx, "sendChainHead")
 	defer ChainHead.End()

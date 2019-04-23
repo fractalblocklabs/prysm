@@ -35,3 +35,18 @@ func (db *BeaconDB) VerifyContractAddress(ctx context.Context, addr common.Addre
 		return nil
 	})
 }
+
+// DepositContractAddress retrieves the latest deposit contract address the chain relies on.
+func (db *BeaconDB) DepositContractAddress(ctx context.Context) string {
+	ctx, span := trace.StartSpan(ctx, "BeaconDB.DepositContractAddress")
+	defer span.End()
+
+	var depositContract string
+	_ := db.view(func(tx *bolt.Tx) error {
+		chainInfo := tx.Bucket(chainInfoBucket)
+		addr := chainInfo.Get(depositContractAddressKey)
+		depositContract = string(addr)
+		return nil
+	})
+	return depositContract
+}

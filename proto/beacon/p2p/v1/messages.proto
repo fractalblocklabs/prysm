@@ -60,6 +60,7 @@ message ChainHeadResponse {
   uint64 canonical_slot = 1;
   bytes canonical_state_root_hash32 = 2;
   bytes finalized_state_root_hash32s = 3;
+  string deposit_contract_address =  4;
 }
 
 message BeaconStateHashAnnounce {
