@@ -433,7 +433,7 @@ func (rs *RegularSync) receiveAttestation(msg p2p.Message) error {
 	}
 
 	// Skip if attestation slot is older than last finalized slot in state.
-	beaconState, err := rs.db.HeadState(ctx)
+	beaconState, err := rs.db.RiskyHeadState(ctx)
 	if err != nil {
 		log.Errorf("Failed to get beacon state: %v", err)
 		return err
