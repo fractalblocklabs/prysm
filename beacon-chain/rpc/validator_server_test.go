@@ -72,7 +72,10 @@ func TestValidatorIndex_InStateNotInDB(t *testing.T) {
 
 	// Wanted validator with public key 'A' is in index '1'.
 	s := &pbp2p.BeaconState{
-		ValidatorRegistry: []*pbp2p.Validator{{Pubkey: []byte{0}}, {Pubkey: []byte{'A'}}, {Pubkey: []byte{'B'}}},
+		ValidatorRegistry: []*pbp2p.Validator{
+			{Pubkey: []byte{0}},
+			{Pubkey: []byte{'A'}, ExitEpoch: params.BeaconConfig().FarFutureEpoch},
+			{Pubkey: []byte{'B'}}},
 	}
 
 	if err := db.SaveState(context.Background(), s); err != nil {

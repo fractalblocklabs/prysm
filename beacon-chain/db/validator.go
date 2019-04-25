@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/prysmaticlabs/prysm/shared/params"
+
 	"github.com/boltdb/bolt"
 	"github.com/prysmaticlabs/prysm/shared/hashutil"
 )
@@ -48,7 +50,9 @@ func (db *BeaconDB) ValidatorIndex(pubKey []byte) (uint64, error) {
 		}
 		for i := 0; i < len(state.ValidatorRegistry); i++ {
 			v := state.ValidatorRegistry[i]
-			if bytes.Equal(v.Pubkey, pubKey) {
+			currentEpoch := state.Slot / params.BeaconConfig().SlotsPerEpoch
+			isActive := v.ActivationEpoch <= currentEpoch && currentEpoch < v.ExitEpoch
+			if bytes.Equal(v.Pubkey, pubKey) && isActive {
 				if err := db.SaveValidatorIndex(pubKey, i); err != nil {
 					return 0, err
 				}
