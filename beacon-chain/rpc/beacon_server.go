@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/prysmaticlabs/prysm/shared/hashutil"
-	"github.com/sirupsen/logrus"
 	"math/big"
 	"time"
+
+	"github.com/prysmaticlabs/prysm/shared/hashutil"
+	"github.com/sirupsen/logrus"
 
 	ptypes "github.com/gogo/protobuf/types"
 	"github.com/prysmaticlabs/prysm/beacon-chain/db"
@@ -84,9 +85,9 @@ func (bs *BeaconServer) CanonicalHead(ctx context.Context, req *ptypes.Empty) (*
 		return nil, err
 	}
 	log.WithFields(logrus.Fields{
-		"headRoot": fmt.Sprintf("0x%x", root),
-		"blockSlot": block.Slot-params.BeaconConfig().GenesisSlot,
-		"parentSlot": parent.Slot-params.BeaconConfig().GenesisSlot,
+		"headRoot":   fmt.Sprintf("0x%x", root),
+		"blockSlot":  block.Slot - params.BeaconConfig().GenesisSlot,
+		"parentSlot": parent.Slot - params.BeaconConfig().GenesisSlot,
 	}).Info("Handing off chain head to proposer...")
 	return block, nil
 }
