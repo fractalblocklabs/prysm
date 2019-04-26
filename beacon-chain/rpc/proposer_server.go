@@ -73,16 +73,14 @@ func (ps *ProposerServer) ProposeBlock(ctx context.Context, blk *pbp2p.BeaconBlo
 	if err != nil {
 		return nil, fmt.Errorf("could not tree hash block: %v", err)
 	}
-	log.WithField("blockRoot", fmt.Sprintf("%#x", h)).Debugf("Block proposal received via RPC")
+	log.WithField("blockRoot", fmt.Sprintf("%#x", h)).Info("Block proposal received via RPC")
 	beaconState, err := ps.chainService.ReceiveBlock(ctx, blk)
 	if err != nil {
 		return nil, fmt.Errorf("could not process beacon block: %v", err)
 	}
-	if err := ps.beaconDB.UpdateChainHead(ctx, blk, beaconState); err != nil {
+	if err := ps.chainService.ApplyForkChoiceRule(ctx, blk, beaconState); err != nil {
 		return nil, fmt.Errorf("failed to update chain: %v", err)
 	}
-	log.WithField("headRoot", fmt.Sprintf("0x%x", h)).Info("Chain head block and state updated")
-
 	if err := ps.beaconDB.SaveHistoricalState(ctx, beaconState); err != nil {
 		log.Errorf("Could not save new historical state: %v", err)
 	}
