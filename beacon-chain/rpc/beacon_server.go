@@ -76,19 +76,21 @@ func (bs *BeaconServer) CanonicalHead(ctx context.Context, req *ptypes.Empty) (*
 	if err != nil {
 		return nil, fmt.Errorf("could not get canonical head block: %v", err)
 	}
-	parent, err := bs.beaconDB.Block(bytesutil.ToBytes32(block.ParentRootHash32))
-	if err != nil {
-		return nil, err
+	if block.Slot != params.BeaconConfig().GenesisSlot {
+		parent, err := bs.beaconDB.Block(bytesutil.ToBytes32(block.ParentRootHash32))
+		if err != nil {
+			return nil, err
+		}
+		root, err := hashutil.HashBeaconBlock(block)
+		if err != nil {
+			return nil, err
+		}
+		log.WithFields(logrus.Fields{
+			"headRoot":   fmt.Sprintf("0x%x", root),
+			"blockSlot":  block.Slot - params.BeaconConfig().GenesisSlot,
+			"parentSlot": parent.Slot - params.BeaconConfig().GenesisSlot,
+		}).Info("Handing off chain head to proposer...")
 	}
-	root, err := hashutil.HashBeaconBlock(block)
-	if err != nil {
-		return nil, err
-	}
-	log.WithFields(logrus.Fields{
-		"headRoot":   fmt.Sprintf("0x%x", root),
-		"blockSlot":  block.Slot - params.BeaconConfig().GenesisSlot,
-		"parentSlot": parent.Slot - params.BeaconConfig().GenesisSlot,
-	}).Info("Handing off chain head to proposer...")
 	return block, nil
 }
 
