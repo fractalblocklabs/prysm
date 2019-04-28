@@ -4,7 +4,7 @@ metadata:
   name: validator
   namespace: beacon-chain
 spec:
-  replicas: 8
+  replicas: 16
   selector:
     matchLabels:
       component: validator
@@ -22,7 +22,7 @@ spec:
       priorityClassName: production-priority
       containers:
       - name: validator
-        image: gcr.io/prysmaticlabs/prysm/validator:latest
+        image: gcr.io/prysmaticlabs/prysm/validator@sha256:1b50b999d94173aa70716d9c421f2e8735e426137ed3042d03b5f745c6911abb
         args:
         - --keystore-path=/keystore
         - --password=nopass
@@ -49,6 +49,7 @@ spec:
         - --keystore-password=nopass
         - --pod-name=$(POD_NAME)
         - --server=cluster-pk-manager:8000
+        - --keys=16
         volumeMounts:
         - name: keystore
           mountPath: /keystore
