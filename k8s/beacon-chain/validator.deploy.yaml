@@ -4,7 +4,7 @@ metadata:
   name: validator
   namespace: beacon-chain
 spec:
-  replicas: 16
+  replicas: 8
   selector:
     matchLabels:
       component: validator
