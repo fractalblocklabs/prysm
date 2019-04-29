@@ -41,7 +41,7 @@ spec:
                 topologyKey: failure-domain.beta.kubernetes.io/zone
       containers:
         - name: beacon-chain
-          image: gcr.io/prysmaticlabs/prysm/beacon-chain@sha256:88fa22c9a02eb7143ea163f2f03a7f11558d0dbbc758e0ed88e0705af84b453e
+          image: gcr.io/prysmaticlabs/prysm/beacon-chain@sha256:f02fdbbb354c024294659712a130817c7b21895c7bf5c616eace48e80dc592df
           args: 
             - --web3provider=wss://goerli.infura.io/ws/v3/be3fb7ed377c418087602876a40affa1
             - --http-web3provider=https://goerli.infura.io/v3/be3fb7ed377c418087602876a40affa1
@@ -52,13 +52,10 @@ spec:
             - --bootstrap-node=/dns4/bootnode/tcp/$(BOOTNODE_SERVICE_PORT)/p2p/QmQEe7o6hKJdGdSkJRh7WJzS6xrex5f4w2SPR6oWbJNriw
             - --relay-node=/ip4/35.224.249.2/tcp/30000/p2p/QmfAgkmjiZNZhr2wFN9TwaRgHouMTBT6HELyzE5A3BT2wK
             - --p2p-port=5000
-            - --enable-tracing
-            - --tracing-endpoint=http://jaeger-collector.istio-system.svc.cluster.local:14268
-            - --trace-sample-fraction=0.5
             - --datadir=/data
             # Disabling gossip sub until a larger beacon chain deployment.
             - --disable-gossip-sub
-            - --enable-historical-state-pruning
+            - --clear-db
           resources:
             requests:
               memory: "100Mi"
