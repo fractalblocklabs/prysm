@@ -41,7 +41,7 @@ spec:
                 topologyKey: failure-domain.beta.kubernetes.io/zone
       containers:
         - name: beacon-chain
-          image: gcr.io/prysmaticlabs/prysm/beacon-chain@sha256:a4a6c086dddd134c3327ac72dd1ba9480a7dc5a7f269248f0ceb04f47f58501a
+          image: gcr.io/prysmaticlabs/prysm/beacon-chain@sha256:c4608a863f769db1eecf2faffd770a66bd85138e97799892cf753f6202fd4ad6
           args: 
             - --web3provider=wss://goerli.infura.io/ws/v3/be3fb7ed377c418087602876a40affa1
             - --http-web3provider=https://goerli.infura.io/v3/be3fb7ed377c418087602876a40affa1
@@ -55,6 +55,7 @@ spec:
             - --datadir=/data
             # Disabling gossip sub until a larger beacon chain deployment.
             - --disable-gossip-sub
+            - --clear-db
           resources:
             requests:
               memory: "100Mi"
