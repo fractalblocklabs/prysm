@@ -4,7 +4,7 @@ metadata:
   name: beacon-chain
   namespace: beacon-chain
 spec:
-  replicas: 3
+  replicas: 5
   serviceName: beacon-chain
   podManagementPolicy: Parallel
   selector:
@@ -41,7 +41,7 @@ spec:
                 topologyKey: failure-domain.beta.kubernetes.io/zone
       containers:
         - name: beacon-chain
-          image: gcr.io/prysmaticlabs/prysm/beacon-chain@sha256:c4608a863f769db1eecf2faffd770a66bd85138e97799892cf753f6202fd4ad6
+          image: gcr.io/prysmaticlabs/prysm/beacon-chain@sha256:4c2b71abaf203ce0c70e62b477cf6d833a3e914bb137aa5d581879c261f96eef
           args: 
             - --web3provider=wss://goerli.infura.io/ws/v3/be3fb7ed377c418087602876a40affa1
             - --http-web3provider=https://goerli.infura.io/v3/be3fb7ed377c418087602876a40affa1
