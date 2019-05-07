@@ -231,5 +231,5 @@ func (q *Querier) IsSynced() (bool, error) {
 	//}
 	//
 	//return false, err
-	return true
+	return true, nil
 }
