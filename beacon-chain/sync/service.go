@@ -134,7 +134,7 @@ func (ss *Service) run() {
 	// Sets the state root of the highest observed slot.
 	ss.InitialSync.InitializeFinalizedStateRoot(ss.Querier.currentFinalizedStateRoot)
 
-	if 1  == 1 {
+	if synced {
 		ss.RegularSync.Start()
 		return
 	}
